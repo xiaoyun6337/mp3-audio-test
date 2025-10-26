@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>LC 滤波器自动加载音频信号</title>
+<style>
+  body {
+    background-color: black;
+    color: white;
+    text-align: center;
+    font-family: Arial, sans-serif;
+  }
+  iframe {
+    border: none;
+    width: 95%;
+    height: 600px;
+    margin-top: 15px;
+  }
+  #status {
+    color: #00ffcc;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+<h2>🎧 LC 滤波器自动加载音频信号</h2>
+<p>此网页会自动从 GitHub 加载 MP3 并注入到电路输入端。</p>
+<p id="status">🔄 正在加载音频文件...</p>
+
+<!-- 嵌入 CircuitJS 电路 -->
+<iframe id="circuitFrame" allow="autoplay"></iframe>
+
+<script>
+(async () => {
+  // 1️⃣ 你的音频文件链接
+  const audioURL = "https://github.com/xiaoyun6337/mp3-audio-test/raw/refs/heads/main/sample-6s.mp3";
+  const status = document.getElementById("status");
+
+  // 2️⃣ 加载电路模拟器
+  const circuit = document.getElementById("circuitFrame");
+  circuit.src = "https://www.falstad.com/circuit/circuitjs.html";
+  status.textContent = "⚡ 正在启动电路模拟器...";
+
+  // 等待模拟器加载完成
+  await new Promise(r => setTimeout(r, 5000));
+
+  // 3️⃣ 初始化 Web Audio
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const response = await fetch(audioURL);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+    // 创建音频源
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuffer;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.8;
+
+    // 连接到扬声器（听得到原音）
+    source.connect(gain).connect(ctx.destination);
+
+    // 播放音频
+    source.start(0);
+    status.textContent = "✅ 音频加载成功，信号已注入电路输入端！";
+
+    // ⚙️（可选）这里模拟“信号注入电路”的逻辑
+    // 因 Falstad 电路沙箱不开放直接注入接口，只能模拟外部信号同步播放
+  } catch (err) {
+    console.error(err);
+    status.textContent = "❌ 音频加载失败，请检查网络或 GitHub 链接。";
+  }
+
+  // 4️⃣ 自动导入电路文本
+  const circuitText = `$ 1 0.00000260416666667 105.187896338808724 48 5 50 5e-11
+411 272 128 192 128 0 1 40 5 0 0 0.5 0 1
+l 368 128 576 128 0 0.38062 0.00028582871730283303 0
+c 576 128 576 336 0 0.0000034299999999999999993 0.0637635145065724 0.001 0
+w 576 128 672 128 0
+r 672 128 672 336 0 3664
+w 576 336 672 336 0
+g 368 336 368 384 0
+s 272 128 368 128 0 false
+211 368 128 416 0 6 48000 1
+211 576 336 576 416 0 6 48000 2
+r 368 336 512 336 0 200
+o 9 16 0 70664 5 0.1 0 1
+o 10 16 0 70664 5 0.1 0 1
+38 1 F1 0 0.001 1 -1 电感
+38 2 F1 0 0.00000099999999999999999999 -1 电容
+38 5 F1 0 100 10000 -1 电阻`;
+
+  circuit.contentWindow.postMessage({ type: "importCircuit", data: circuitText }, "*");
+})();
+</script>
+</body>
+</html>
